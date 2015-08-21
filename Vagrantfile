@@ -16,6 +16,7 @@ VAGRANTFILE_API_VERSION = "2"
 #### BEGIN CUSTOMIZATION ####
 #############################
 #define number of nodes
+#
 num_APPLICATION       = 0
 num_LEAF_INSTANCES    = 0
 num_DB_INSTANCES      = 2

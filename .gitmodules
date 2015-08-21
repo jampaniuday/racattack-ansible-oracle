@@ -1,3 +1,6 @@
+[submodule "stagefiles/--force"]
+	path = stagefiles/--force
+	url = https://github.com/pioro/ansible-oracle.git
 [submodule "stagefiles/ansible-oracle"]
 	path = stagefiles/ansible-oracle
-	url = https://github.com/oravirt/ansible-oracle
+	url = https://github.com/pioro/ansible-oracle.git
