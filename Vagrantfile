@@ -18,7 +18,7 @@ VAGRANTFILE_API_VERSION = "2"
 #define number of nodes
 num_APPLICATION       = 0
 num_LEAF_INSTANCES    = 0
-num_DB_INSTANCES      = 1
+num_DB_INSTANCES      = 2
 #
 #define number of cores for guest
 num_CORE              = 1
@@ -91,7 +91,7 @@ inventory_ansible << "[racattack-leaf]\n"
 end
 inventory_ansible << "[racattack-hub]\n"
 (1..num_DB_INSTANCES).each do |i|
-  inventory_ansible << "collabn#{i} ansible_ssh_user=root ansible_ssh_pass=root\n"
+  inventory_ansible << "node#{i} ansible_ssh_user=root ansible_ssh_pass=root\n"
 end
 inventory_ansible << "[racattack:children]\n"
 inventory_ansible << "racattack-leaf\n" if num_LEAF_INSTANCES > 0
@@ -107,17 +107,22 @@ $etc_hosts_script = <<SCRIPT
 grep PEERDNS /etc/sysconfig/network-scripts/ifcfg-eth0 || echo 'PEERDNS=no' >> /etc/sysconfig/network-scripts/ifcfg-eth0
 echo "overwriting /etc/resolv.conf"
 cat > /etc/resolv.conf <<EOF
-nameserver 192.168.78.51
-nameserver 192.168.78.52
-nameserver 10.0.2.3
+nameserver 192.168.1.51
+nameserver 192.168.1.52
+nameserver 192.168.1.20
 search racattack collabn.racattack
 EOF
 
 cat > /etc/hosts << EOF
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost6 localhost6.localdomain6
+192.168.1.251 collabn-cluster-scan.racattack
+192.168.1.51 node1
+192.168.1.52 node2
 EOF
 SCRIPT
+
+FileUtils.copy_file("stagefiles/racattack.group_vars","stagefiles/ansible-oracle/group_vars/racattack")
 
 #variable used to provide information only once
 give_info ||=true
@@ -130,8 +135,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Every Vagrant virtual environment requires a box to build off of.
   config.ssh.insert_key = false
-  config.vm.box = "kikitux/oracle6-racattack"
-  #config.vm.box = "racattack/oracle65"
+  config.vm.box = "kikituxracattack"
 
   ## Virtualbox modifications
   ## we first setup memory and cpu
@@ -204,46 +208,34 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   (1..num_DB_INSTANCES).each do |i|
     # this is to start machines higher to lower
     i = num_DB_INSTANCES+1-i
-    config.vm.define vm_name = "collabn%01d" % i do |config|
+    config.vm.define vm_name = "node%01d" % i do |config|
       puts " "
       config.vm.hostname = "#{vm_name}.racattack"
-      lanip = "192.168.78.#{i+50}"
+      lanip = "192.168.1.#{i+50}"
       puts vm_name + " eth1 lanip  :" + lanip
-      privip = "172.16.100.#{i+50}"
+      privip = "10.10.20.#{i+50}"
       puts vm_name + " eth2 privip :" + privip
-      config.vm.provider :virtualbox do |vb|
-        vb.name = vm_name + "." + Time.now.strftime("%y%m%d%H%M")
-        vb.customize ["modifyvm", :id, "--memory", memory_DB_INSTANCES]
-        vb.customize ["modifyvm", :id, "--cpus", num_CORE]
-        vb.customize ["modifyvm", :id, "--groups", "/collab"]
-        #first shared disk port
-        port=2
-        #how many shared disk
-        (1..count_shared_disk).each do |disk|
-          file_to_dbdisk = "racattack-shared-disk"
-          if !File.exist?("#{file_to_dbdisk}#{disk}.vdi")
-            unless give_info==false
-              puts "on first boot shared disks will be created, this will take some time"
-              give_info=false
-            end
-            vb.customize ['createhd', '--filename', "#{file_to_dbdisk}#{disk}.vdi", '--size', (size_shared_disk * 1024).floor, '--variant', 'fixed']
-            vb.customize ['modifyhd', "#{file_to_dbdisk}#{disk}.vdi", '--type', 'shareable']
-          end
-          vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', port, '--device', 0, '--type', 'hdd', '--medium', "#{file_to_dbdisk}#{disk}.vdi"]
-          port=port+1
-        end
+      config.vm.provider :libvirt do |libvirt|
+	libvirt.storage_pool_name = "pool_d2"
+        libvirt.memory=4096
+        libvirt.cpus=2
+        #libvirt.storage :file, :size => '20G', :type => 'qcow2'
+        libvirt.storage :file, :size => '5G', :type => 'raw', :allow_existing => 'true', :bus=> 'scsi', :device=>'sda', :path=>'asmdisk1'
+        libvirt.storage :file, :size => '5G', :type => 'raw', :allow_existing => 'true', :bus=> 'scsi', :device=>'sdb', :path=>'asmdisk2'
+        libvirt.storage :file, :size => '5G', :type => 'raw', :allow_existing => 'true', :bus=> 'scsi', :device=>'sdc', :path=>'asmdisk3'
+        libvirt.storage :file, :size => '20G', :type => 'raw', :allow_existing => 'true', :bus=> 'scsi', :device=>'sdd', :path=>'asmdisk4'
       end
-      config.vm.network :private_network, ip: lanip
-      config.vm.network :private_network, ip: privip
+      config.vm.network :public_network,  ip: lanip,  :dev => "br0", :mode => "bridge", :type => "bridge"
+      config.vm.network :private_network, ip: privip, :libvirti__network_name => "private-rac"
       if not ENV['setup'] == "clean"
-        if vm_name == "collabn1" 
+        if vm_name == "node1" 
           puts vm_name + " dns server role is master"
           config.vm.provision :shell, :inline => "sh /media/stagefiles/named_master.sh"
           if ENV['setup']
             config.vm.provision :shell, :inline => "bash /media/stagefiles/run_ansible_playbook.sh #{cluster_type} #{ENV['giver']} #{ENV['dbver']}" 
           end
         end
-        if vm_name == "collabn2" 
+        if vm_name == "node2" 
           puts vm_name + " dns server role is slave"
           config.vm.provision :shell, :inline => "sh /media/stagefiles/named_slave.sh"
         end

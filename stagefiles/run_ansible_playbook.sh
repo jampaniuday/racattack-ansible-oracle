@@ -15,13 +15,13 @@ fi
 
 PATHTOFILES=/media/stagefiles
 
-[ -f $PATHTOFILES/ansible-oracle/group_vars/racattack ] && chmod ugo+rw $PATHTOFILES/ansible-oracle/group_vars/racattack
-cat $PATHTOFILES/racattack.group_vars > $PATHTOFILES/ansible-oracle/group_vars/racattack
+#[ -f $PATHTOFILES/ansible-oracle/group_vars/racattack ] && chmod ugo+rw $PATHTOFILES/ansible-oracle/group_vars/racattack
+#cat $PATHTOFILES/racattack.group_vars > $PATHTOFILES/ansible-oracle/group_vars/racattack
 
-for x in {a,l,n}{1..9}; do
-  echo "master_node: false" > $PATHTOFILES/ansible-oracle/host_vars/collab$x
+for x in {1..9}; do
+  echo "master_node: false" > $PATHTOFILES/ansible-oracle/host_vars/node$x
 done
-echo "master_node: true" > $PATHTOFILES/ansible-oracle/host_vars/collabn1
+echo "master_node: true" > $PATHTOFILES/ansible-oracle/host_vars/node1
 
 # Set cluster_type to 'standard' if nothing is passed to this script. Needed as we always pass cluster_type to the playbook
 if [[ $1 && "$1" == flex && $GIVER && "$GIVER" =~ "12" ]]; then

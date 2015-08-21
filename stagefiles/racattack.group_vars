@@ -22,15 +22,23 @@
   oracle_user: oracle
   oracle_group: oinstall
   grid_user: grid
-  oracle_sw_copy: false 
-  oracle_sw_unpack: true
-  oracle_stage: /u01/stage
-  oracle_stage_remote: /media/sf_12cR1
+  oracle_sw_copy: False 
+  oracle_sw_unpack: False
+  #oracle_stage: /u01/stage
+  #oracle_stage_remote: /media/sf_12cR1
   oracle_rsp_stage: /u01/stage/rsp
+  master_node: false
+
+  install_from_nfs: true
+  nfs_server_sw: 192.168.1.20
+  nfs_server_sw_path: /disk2/Oracle11204/
+  oracle_stage_remote: /mnt/orasw
+  oracle_stage: /mnt/orasw
+  
 
   configure_interconnect: false
   configure_ssh: true
-  configure_host_disks: false
+  configure_host_disks: false 
                                           
   configure_cluster: true
   install_os_packages: false
@@ -85,7 +93,7 @@
   oracle_reco_dir_asm: "FRA"                                                                                                                                                                                                               
   host_fs_layout:
       u01:
-        {mntp: /u01, device: /dev/sdb, vgname: vgora, pvname: /dev/sdb1, lvname: lvora, fstype: ext4}
+        {mntp: /u01, device: /dev/vdb, vgname: vgora, pvname: /dev/vdb1, lvname: lvora, fstype: ext4}
 
   asm_diskgroups:  
      - data
@@ -93,8 +101,8 @@
 
   asm_storage_layout:   
    data:
-     - {device: /dev/sdc, asmlabel: asmdisk01}
-     - {device: /dev/sdd, asmlabel: asmdisk02}
-     - {device: /dev/sde, asmlabel: asmdisk03}
+     - {device: /dev/sda, asmlabel: asmdisk01}
+     - {device: /dev/sdb, asmlabel: asmdisk02}
+     - {device: /dev/sdc, asmlabel: asmdisk03}
    fra:
-     - {device: /dev/sdf, asmlabel: asmdisk04}
+     - {device: /dev/sdd, asmlabel: asmdisk04}
